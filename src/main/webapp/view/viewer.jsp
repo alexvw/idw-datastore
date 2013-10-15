@@ -7,7 +7,7 @@
     </p>  
 </body>
 <script>
-function goAjax(){
+function goWrite(){
 	//var object = [{rowId:'rowid1234',attrId:'attrid23434',blob:'blobtext'}];
 	var object = [{rowId:'rowid2343', attrId:'attr1', blob:'bloctext'},{rowId:'row5454', attrId:'attr2',blob:'blobltext'}];
 	 $.ajax({
@@ -16,6 +16,36 @@ function goAjax(){
 	        },
 	        type: "POST",
 	        url: 'http://localhost:8080/write',
+	        data: JSON.stringify( object ),
+	        dataType: "json",
+	        success: function(data) {
+	           alert(data);
+	        }
+	    });
+}function goRead(){
+	//var object = [{rowId:'rowid1234',attrId:'attrid23434',blob:'blobtext'}];
+	var object = [{rowId:'rowid2343'},{rowId:'row5454'}];
+	 $.ajax({
+	    	headers: { 
+	            'Content-Type': 'application/json' 
+	        },
+	        type: "POST",
+	        url: 'http://localhost:8080/readRow',
+	        data: JSON.stringify( object ),
+	        dataType: "json",
+	        success: function(data) {
+	           alert(data);
+	        }
+	    });
+}function goDelete(){
+	//var object = [{rowId:'rowid1234',attrId:'attrid23434',blob:'blobtext'}];
+	var object = [{rowId:'rowid2343'},{rowId:'row5454'}];
+	 $.ajax({
+	    	headers: { 
+	            'Content-Type': 'application/json' 
+	        },
+	        type: "POST",
+	        url: 'http://localhost:8080/deleteRow',
 	        data: JSON.stringify( object ),
 	        dataType: "json",
 	        success: function(data) {

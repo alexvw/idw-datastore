@@ -190,7 +190,7 @@ public class DataStoreController {
 	 * @param UIRequest A JSON list of RowUIObjects, each one a request for an attr to be deleted
 	 * @return string success or fail. TODO: Improve the return status
 	 */
-	@RequestMapping(value = "/deleteRow", method = RequestMethod.POST)
+	@RequestMapping(value = "/deleteAttr", method = RequestMethod.POST)
 	public @ResponseBody
 	String deleteAttr(@RequestBody AttrUIObject[] UIRequest,
 			HttpServletRequest request, HttpServletResponse response) {	
