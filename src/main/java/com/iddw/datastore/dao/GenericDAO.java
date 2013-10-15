@@ -1,5 +1,9 @@
 package com.iddw.datastore.dao;
 
+import java.util.List;
+
+import com.iddw.datastore.dataobject.AttributeBlob;
+
 /*
  * @author avanderwoude
  * 
@@ -7,8 +11,9 @@ package com.iddw.datastore.dao;
  */
 
 public interface GenericDAO<T> {
-	public void write(T t);
-	public T read(String key);
-	public T read(String key, String attr);
-	public void delete(T t);
+	public void write(List<T> t) throws Exception;
+	public List<AttributeBlob> read(String key) throws Exception;
+	public T read(String key, String attr) throws Exception;
+	public void delete(String rowId) throws Exception;
+	public void delete(String rowId, String attrId) throws Exception;
 }

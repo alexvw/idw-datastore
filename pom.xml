@@ -120,7 +120,10 @@
 				<application.context>/cds-local</application.context>
 				
 				<!-- cassandra properties -->
-				<c.url>127.0.0.1</c.url>
+				<c.host>127.0.0.1</c.host>
+				<c.port>9160</c.port>
+				<c.maxconn>10</c.maxconn>
+				<c.seeds>NOTUSED</c.seeds>
 				<c.cluster>local-ds</c.cluster>
 				<c.keyspace>exampledatastore</c.keyspace>
 				

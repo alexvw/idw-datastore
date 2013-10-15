@@ -2,13 +2,16 @@ package com.iddw.datastore.controller;
  
 import java.io.IOException;
 import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -22,8 +25,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.mvc.multiaction.NoSuchRequestHandlingMethodException;
 
-import com.iddw.datastore.util.Constants;
-import com.iddw.datastore.service.dataStoreService;
+import com.iddw.datastore.service.DataStoreService;
 import com.iddw.datastore.dataobject.AttributeBlob;
     
 
@@ -34,11 +36,13 @@ import com.iddw.datastore.dataobject.AttributeBlob;
  */
 
 @Controller   
-public class dataStoreController {  
+public class DataStoreController {  
 	
 	@Autowired
 	@Qualifier("envProperties")
 	private Properties envProperties;
+	
+	DataStoreService DSS = new DataStoreService();
     
 	/**
 	 * SAVE
@@ -46,17 +50,94 @@ public class dataStoreController {
 	 *
 	 * @param request A JSON list of AttributeBlob objects, to be saved to the db
 	 * @return outcome If for some reason this fails, it returns an object that contains the failure information
+	 * @throws InterruptedException 
 	 */
-	@RequestMapping(value = "/write", method = RequestMethod.GET)
-	public void write(/*@RequestBody List<AttributeBlob> blobList,*/ HttpServletRequest request) {
-		//grab parameters
-		
+	@RequestMapping(value = "/test", method = RequestMethod.GET)
+	public ModelAndView testWrite(/*@RequestBody List<AttributeBlob> blobList,*/ HttpServletRequest request, ModelMap modelMap) throws InterruptedException {		
 		System.out.println("keyspace: " +envProperties +" - " + envProperties.getProperty("c.keyspace"));
-		//check list of blobs
 		
-		//pass object to service to save
+		String rowid = "mbun98374598";
+		AttributeBlob newBlob = new AttributeBlob();
+		newBlob.setRowId(rowid);newBlob.setAttrId("test");newBlob.setBlob("blobtext");
+		List<AttributeBlob> writeList = new ArrayList<AttributeBlob>();
+		writeList.add(newBlob);
+		DSS.write(writeList);
+		Thread.sleep(500);
 		
-		//return outcome
+		System.out.println(DSS.read(rowid).get(0).getAttrId());
+		System.out.println(DSS.read("mbun90909090"));
+		
+		return new ModelAndView("view/viewer", modelMap);
 	}
+	
+	@RequestMapping(value = "/write", method = RequestMethod.POST)
+	public @ResponseBody
+	String write(@RequestBody AttributeBlob[] blobList,
+			HttpServletRequest request, HttpServletResponse response) {	
+		System.out.println("Received "+ blobList.length +" write requests");
+		//list of blobs to write to cds
+		List<AttributeBlob> writeList = new ArrayList<AttributeBlob>();
+		
+		//grab each of the attributeblobs from the JSON request
+		for (AttributeBlob AB : blobList){
+			AttributeBlob newBlob = new AttributeBlob();
+        	//rowId, column.getName(), column.getStringValue()
+        	newBlob.setAttrId(AB.getAttrId());
+        	newBlob.setBlob(AB.getBlob());
+        	newBlob.setRowId(AB.getRowId());
+			writeList.add(newBlob);
+		}
+		
+		DSS.write(writeList);
+		
+		return "success";
+	}
+	
+	@RequestMapping(value = "/write", method = RequestMethod.POST)
+	public @ResponseBody
+	String write(@RequestBody AttributeBlob[] blobList,
+			HttpServletRequest request, HttpServletResponse response) {	
+		System.out.println("Received "+ blobList.length +" write requests");
+		//list of blobs to write to cds
+		List<AttributeBlob> writeList = new ArrayList<AttributeBlob>();
+		
+		//grab each of the attributeblobs from the JSON request
+		for (AttributeBlob AB : blobList){
+			AttributeBlob newBlob = new AttributeBlob();
+        	//rowId, column.getName(), column.getStringValue()
+        	newBlob.setAttrId(AB.getAttrId());
+        	newBlob.setBlob(AB.getBlob());
+        	newBlob.setRowId(AB.getRowId());
+			writeList.add(newBlob);
+		}
+		
+		DSS.write(writeList);
+		
+		return "success";
+	}
+	
+	/*
+	@RequestMapping(value = "/getMaskedValues.max", method = RequestMethod.POST)
+	public @ResponseBody
+	MaskedValuesResponse getMasked(@RequestBody SimpleUIRequest[] simpleRequestList,
+			HttpServletRequest request, HttpServletResponse response) throws ServiceException {
+		//TODO: Add security, check session, mbun etc
+		
+		HttpSession session = request.getSession();
+		String apiKey = (String) session.getAttribute(SessionConstants.RP_API_KEY);
+		String idpType = (String) session.getAttribute(SessionConstants.RP_IDP_TYPE);
+		String credential = (String) session.getAttribute(SessionConstants.CREDENTIAL);
+		String mbun = (String) session.getAttribute(SessionConstants.MBUN);		
+		
+		//get info
+		//TODO: get data from session instead
+		Company thisRP = companyService.getAXNServiceByApiKey(apiKey).getCompany();
+		User thisUser = userService.getUserByMbun(mbun);
+		
+		System.out.println("\n\n\n"+ mbun +", "+ apiKey +" "+thisRP+", "+thisUser);
+		
+		//grab data
+		return umcService.getMaskedValues(thisUser, simpleRequestList);
+	}*/
 }
 

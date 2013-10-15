@@ -1,14 +1,22 @@
 package com.iddw.datastore.dao;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 import com.netflix.astyanax.AstyanaxContext;
 import com.netflix.astyanax.Keyspace;
+import com.netflix.astyanax.MutationBatch;
 import com.netflix.astyanax.connectionpool.NodeDiscoveryType;
 import com.netflix.astyanax.connectionpool.OperationResult;
 import com.netflix.astyanax.connectionpool.exceptions.NotFoundException;
 import com.netflix.astyanax.connectionpool.impl.ConnectionPoolConfigurationImpl;
 import com.netflix.astyanax.connectionpool.impl.CountingConnectionPoolMonitor;
+import com.netflix.astyanax.connectionpool.impl.SimpleAuthenticationCredentials;
 import com.netflix.astyanax.impl.AstyanaxConfigurationImpl;
 import com.netflix.astyanax.model.Column;
 import com.netflix.astyanax.model.ColumnFamily;
@@ -16,77 +24,144 @@ import com.netflix.astyanax.model.ColumnList;
 import com.netflix.astyanax.serializers.StringSerializer;
 import com.netflix.astyanax.thrift.ThriftFamilyFactory;
 
-import com.iddw.datastore.util.const;
+import com.iddw.datastore.dao.GenericDAO;
+import com.iddw.datastore.dataobject.AttributeBlob;
 
-public class CassandraDAOImpl implements DAO<AttributeBlob> {
+public class CassandraDAOImpl implements GenericDAO<AttributeBlob> {
 	
 	@Autowired
 	@Qualifier("envProperties")
-	private Properties envProperties;
+	private static Properties envProperties;
 	
     // Cassandra keyspace
     private static Keyspace ks;
 
     // Data model is documented in the wiki
-    private static final ColumnFamily<String, String> CF_SUBSCRIPTIONS = new ColumnFamily<String, String>("Subscriptions", StringSerializer.get(), StringSerializer.get());
-
-    /*
-    *//**
-     * Get the feed urls from Cassandra
-     *//*
-    @Override
-    public List<String> getSubscribedUrls(String userId) throws Exception{
+    private static final ColumnFamily<String, String> CF_ESTORE = new ColumnFamily<String, String>("encryptedstore", StringSerializer.get(), StringSerializer.get());
+    
+    /**
+     * Get an entire row
+     */
+   @Override
+    public List<AttributeBlob> read(String rowId) throws Exception{
         OperationResult<ColumnList<String>> response;
         try {
-            response = getKeyspace().prepareQuery(CF_SUBSCRIPTIONS).getKey(userId).execute();
+            response = getKeyspace().prepareQuery(CF_ESTORE).getKey(rowId).execute();
         } catch (NotFoundException e) {
-            logger.error("No record found for this user: " + userId);
+            //logger.error("No record found for this rowId: " + rowId);
             throw e;
         } catch (Exception t) {
-            logger.error("Exception occurred when fetching from Cassandra: " + t);
+            //logger.error("Exception occurred when fetching from Cassandra: " + t);
             throw t;
         }
 
-        final List<String> items = new ArrayList<String>();
+        List<AttributeBlob> items = new ArrayList<AttributeBlob>();
         if (response != null) {
             final ColumnList<String> columns = response.getResult();
             for (Column<String> column : columns) {
-                items.add(column.getName());
+            	AttributeBlob newBlob = new AttributeBlob();
+            	//rowId, column.getName(), column.getStringValue()
+            	newBlob.setAttrId(column.getName());
+            	newBlob.setBlob(column.getStringValue());
+            	newBlob.setRowId(rowId);
+                items.add(newBlob);
             }
         }
 
         return items;
     }
+   
+   /**
+    * Get a single attr column
+    */
+  @Override
+   public AttributeBlob read(String rowId, String attrId) throws Exception{
+       OperationResult<ColumnList<String>> response;
+       try {
+           response = getKeyspace().prepareQuery(CF_ESTORE).getKey(rowId).execute();
+       } catch (NotFoundException e) {
+           //logger.error("No record found for this rowId: " + rowId);
+           throw e;
+       } catch (Exception t) {
+           //logger.error("Exception occurred when fetching from Cassandra: " + t);
+           throw t;
+       }
+       
+       //grab columns, then grab this attr blob
+       final ColumnList<String> columns = response.getResult();
+       String blob = columns.getColumnByName(attrId).getStringValue();
 
-    *//**
-     * Add feed url into Cassandra
-     *//*
+       AttributeBlob newBlob = new AttributeBlob();
+   	//rowId, column.getName(), column.getStringValue()
+	   	newBlob.setAttrId(attrId);
+	   	newBlob.setBlob(blob);
+	   	newBlob.setRowId(rowId);
+       
+       //return new AttributeBlob(rowId, attrId, blob);
+       return newBlob;
+   }
+
+    /*
+     * Insert encrypted blob into datastore
+     */
     @Override
-    public void subscribeUrl(String userId, String url) throws Exception{
+    public void write(List<AttributeBlob> blobs) throws Exception{
         try {
-            OperationResult<Void> opr = getKeyspace().prepareColumnMutation(CF_SUBSCRIPTIONS, userId, url)
-                .putValue("1", null).execute();
-            logger.info("Time taken to add to Cassandra (in ms): " + opr.getLatency(TimeUnit.MILLISECONDS));
+        	//check for null list
+        	if (blobs != null) {
+        		//moment of truth. Inserting DATA
+        		MutationBatch m = getKeyspace().prepareMutationBatch();
+
+        		for (AttributeBlob AB : blobs){
+        			/*if (AB.getExpiry() != -1)
+        			m.withRow(CF_ESTORE, AB.getRowId())
+        			  .putColumn(AB.getAttrId(), AB.getBlob(), AB.getExpiry());*/
+        			//else
+        				m.withRow(CF_ESTORE, AB.getRowId())
+      			  .putColumn(AB.getAttrId(), AB.getBlob(), null);
+        		}
+        		//GO FOR IT
+        		 OperationResult<Void> opr = m.execute();
+        		 
+                //logger.info("Time taken to add to Cassandra (in ms): " + opr.getLatency(TimeUnit.MILLISECONDS));
+        		 System.out.println("Successful write: " +opr.getLatency(TimeUnit.MILLISECONDS));
+        	}
         } catch (Exception e) {
-            logger.error("Exception occurred when writing to Cassandra: " + e);
+            //logger.error("Exception occurred when writing to Cassandra: " + e);
             throw e;
         }
     }
 
-    *//**
-     * Delete feed url from Cassandra
-     *//*
-    @Override
-    public void unsubscribeUrl(String userId, String url) throws Exception{
+    /*
+     * Delete single attribute blob
+     */
+   @Override
+    public void delete(String rowId, String attrId) throws Exception{
         try {
-            OperationResult<Void> opr = getKeyspace().prepareColumnMutation(CF_SUBSCRIPTIONS, userId, url)
+            OperationResult<Void> opr = getKeyspace().prepareColumnMutation(CF_ESTORE, rowId, attrId)
                 .deleteColumn().execute();
-            logger.info("Time taken to delete from Cassandra (in ms): " + opr.getLatency(TimeUnit.MILLISECONDS));
+            //logger.info("Time taken to delete from Cassandra (in ms): " + opr.getLatency(TimeUnit.MILLISECONDS));
         } catch (Exception e) {
-            logger.error("Exception occurred when writing to Cassandra: " + e);
+            //logger.error("Exception occurred when writing to Cassandra: " + e);
             throw e;
         }
-    }*/
+    }
+   
+   /*
+    * Delete entire user row
+    */
+  @Override
+   public void delete(String rowId) throws Exception{
+       try {
+    	   MutationBatch m = getKeyspace().prepareMutationBatch();
+    	   m.withRow(CF_ESTORE, rowId).delete();
+           OperationResult<Void> opr = m.execute();
+           //logger.info("Time taken to delete from Cassandra (in ms): " + opr.getLatency(TimeUnit.MILLISECONDS));
+       } catch (Exception e) {
+           //logger.error("Exception occurred when writing to Cassandra: " + e);
+           throw e;
+       }
+   }
 
 
     /*
@@ -95,25 +170,43 @@ public class CassandraDAOImpl implements DAO<AttributeBlob> {
     private static Keyspace getKeyspace() throws Exception{
         if (ks == null) {
             try {
-                AstyanaxContext<Keyspace> context = new AstyanaxContext.Builder()
-                    .forKeyspace(DynamicPropertyFactory.getInstance().getStringProperty(RSSConstants.CASSANDRA_KEYSPACE, null).get())
+            	System.out.println(envProperties);
+                /*AstyanaxContext<Keyspace> context = new AstyanaxContext.Builder()
+                    .forKeyspace(envProperties.getProperty("c.keyspace"))
                     .withAstyanaxConfiguration(new AstyanaxConfigurationImpl()
+                    	.setTargetCassandraVersion(envProperties.getProperty("c.cass.version"))
                         .setDiscoveryType(NodeDiscoveryType.RING_DESCRIBE)
                     )
-                    .withConnectionPoolConfiguration(new ConnectionPoolConfigurationImpl("MyConnectionPool")
-                        .setPort(DynamicPropertyFactory.getInstance().getIntProperty(RSSConstants.CASSANDRA_PORT, 0).get())
-                        .setMaxConnsPerHost(DynamicPropertyFactory.getInstance().getIntProperty(RSSConstants.CASSANDRA_MAXCONNSPERHOST, 1).get())
-                        .setSeeds(DynamicPropertyFactory.getInstance().getStringProperty(RSSConstants.CASSANDRA_HOST, "").get() + ":" +
-                                  DynamicPropertyFactory.getInstance().getIntProperty(RSSConstants.CASSANDRA_PORT, 0).get()
+                    .withConnectionPoolConfiguration(new ConnectionPoolConfigurationImpl("IDWConnectionPool")
+                        .setPort(Integer.parseInt(envProperties.getProperty("c.port")))
+                        .setMaxConnsPerHost(Integer.parseInt(envProperties.getProperty("c.maxconn")))
+                        .setSeeds(envProperties.getProperty("c.host") + ":" + envProperties.getProperty("c.port")
                         )
                     )
                     .withConnectionPoolMonitor(new CountingConnectionPoolMonitor())
-                    .buildKeyspace(ThriftFamilyFactory.getInstance());
+                    .buildKeyspace(ThriftFamilyFactory.getInstance());*/
+            	
+            	AstyanaxContext<Keyspace> context = new AstyanaxContext.Builder()
+                .forKeyspace("exampledatastore")
+                .withAstyanaxConfiguration(new AstyanaxConfigurationImpl()
+                	.setTargetCassandraVersion("1.2")
+                    .setDiscoveryType(NodeDiscoveryType.RING_DESCRIBE)
+                )
+                .withConnectionPoolConfiguration(new ConnectionPoolConfigurationImpl("MyConnectionPool")
+                	.setPort(9160)
+                    .setMaxConnsPerHost(1)
+                    .setSeeds("127.0.0.1:9160")
+                    .setAuthenticationCredentials(
+                    		 new SimpleAuthenticationCredentials(new String("cassandra"), new String("Criterion123"))
+                    		 )
+                )
+                .withConnectionPoolMonitor(new CountingConnectionPoolMonitor())
+                .buildKeyspace(ThriftFamilyFactory.getInstance());
 
                 context.start();
-                ks = context.getEntity();
+                ks = context.getClient();
             } catch (Exception e) {
-                logger.error("Exception occurred when initializing Cassandra keyspace: " + e);
+                //logger.error("Exception occurred when initializing Cassandra keyspace: " + e);
                 throw e;
             }
         }
