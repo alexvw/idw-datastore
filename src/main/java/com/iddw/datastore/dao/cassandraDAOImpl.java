@@ -25,7 +25,9 @@ import com.netflix.astyanax.serializers.StringSerializer;
 import com.netflix.astyanax.thrift.ThriftFamilyFactory;
 
 import com.iddw.datastore.dao.GenericDAO;
+import com.iddw.datastore.dataobject.AttrUIObject;
 import com.iddw.datastore.dataobject.AttributeBlob;
+import com.iddw.datastore.dataobject.RowUIObject;
 
 public class CassandraDAOImpl implements GenericDAO<AttributeBlob> {
 	
@@ -136,10 +138,14 @@ public class CassandraDAOImpl implements GenericDAO<AttributeBlob> {
      * Delete single attribute blob
      */
    @Override
-    public void delete(String rowId, String attrId) throws Exception{
+    public void deleteAttr(List<AttrUIObject> attrList) throws Exception{
         try {
-            OperationResult<Void> opr = getKeyspace().prepareColumnMutation(CF_ESTORE, rowId, attrId)
-                .deleteColumn().execute();
+        	MutationBatch m = getKeyspace().prepareMutationBatch();
+        	for (AttrUIObject auo : attrList){
+        		m.withRow(CF_ESTORE, auo.getRowId()).deleteColumn(auo.getAttrId());
+        	}
+           // OperationResult<Void> opr = getKeyspace().prepareColumnMutation(CF_ESTORE, rowId, attrId).deleteColumn().execute();
+        	m.execute();
             //logger.info("Time taken to delete from Cassandra (in ms): " + opr.getLatency(TimeUnit.MILLISECONDS));
         } catch (Exception e) {
             //logger.error("Exception occurred when writing to Cassandra: " + e);
@@ -151,10 +157,12 @@ public class CassandraDAOImpl implements GenericDAO<AttributeBlob> {
     * Delete entire user row
     */
   @Override
-   public void delete(String rowId) throws Exception{
+   public void deleteRow(List<RowUIObject> rowList) throws Exception{
        try {
     	   MutationBatch m = getKeyspace().prepareMutationBatch();
-    	   m.withRow(CF_ESTORE, rowId).delete();
+    	   for (RowUIObject ruo : rowList){
+    		   m.withRow(CF_ESTORE, ruo.getRowId()).delete();
+    	   }
            OperationResult<Void> opr = m.execute();
            //logger.info("Time taken to delete from Cassandra (in ms): " + opr.getLatency(TimeUnit.MILLISECONDS));
        } catch (Exception e) {

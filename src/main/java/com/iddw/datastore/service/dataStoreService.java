@@ -3,7 +3,9 @@ package com.iddw.datastore.service;
 import java.util.List;
 
 import com.iddw.datastore.dao.*;
+import com.iddw.datastore.dataobject.AttrUIObject;
 import com.iddw.datastore.dataobject.AttributeBlob;
+import com.iddw.datastore.dataobject.RowUIObject;
 
 /**
  * @author avanderwoude
@@ -51,11 +53,11 @@ public class DataStoreService{
 		}
 		
 		//delete this entire row
-		public boolean delete(String rowId){
-			System.out.println("Deleting from cds: " + rowId);
+		public boolean deleteRow(List<RowUIObject> rows){
+			System.out.println("Deleting from cds: " + rows.size());
 			//write
 			try {
-				CDI.delete(rowId);
+				CDI.deleteRow(rows);
 				return true;
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -64,11 +66,11 @@ public class DataStoreService{
 		}
 		
 		//delete an attr
-		public boolean delete(String rowId, String attrId){
-			System.out.println("Deleting from cds: " + rowId + " : " +attrId);
+		public boolean deleteAttr(List<AttrUIObject> attrs){
+			System.out.println("Deleting from cds: " + attrs.size());
 			//write
 			try {
-				CDI.delete(rowId,attrId);
+				CDI.deleteAttr(attrs);
 				return true;
 			} catch (Exception e) {
 				e.printStackTrace();

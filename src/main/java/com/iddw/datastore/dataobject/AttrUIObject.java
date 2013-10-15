@@ -1,10 +1,9 @@
 package com.iddw.datastore.dataobject;
 
-public class AttributeBlob {
+public class AttrUIObject {
 
 	private String rowId;
 	private String attrId;
-	private String blob;
 
 	public String getAttrId() {
 		return attrId;
@@ -12,14 +11,6 @@ public class AttributeBlob {
 
 	public void setAttrId(String attrId) {
 		this.attrId = attrId;
-	}
-
-	public String getBlob() {
-		return blob;
-	}
-
-	public void setBlob(String blob) {
-		this.blob = blob;
 	}
 
 	public String getRowId() {
