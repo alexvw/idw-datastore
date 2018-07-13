@@ -128,7 +128,7 @@
 				<c.keyspace>exampledatastore</c.keyspace>
 				
 				<c.auth.user>cassandra</c.auth.user>
-				<c.auth.pwd>Criterion123</c.auth.pwd>
+				<c.auth.pwd>password</c.auth.pwd>
 				
 				<c.cql.version>3.0.0</c.cql.version>
 				<c.cass.version>1.2</c.cass.version>
